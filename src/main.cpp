@@ -18,7 +18,7 @@ typedef struct _SplitPlane {
 int main(int argc, char** argv) {
     std::string test_data_dirpath = APP_ROOT;
         test_data_dirpath.append("/test-data");
-    std::string level_filepath = test_data_dirpath + "/simple-plane.glb";
+    std::string level_filepath = test_data_dirpath + "/simple-plane-tilted.glb";
 
     Assimp::Importer importer;
 
@@ -77,5 +77,28 @@ int main(int argc, char** argv) {
                 vert_ids_processed.clear();
             }
         }
+    }
+
+    // Generate splitplanes
+    int num_face_quads = face_quads.size();
+    for (int face_quad_idx = 0; face_quad_idx < num_face_quads; face_quad_idx++) {
+        FaceQuad face_quad = face_quads[face_quad_idx];
+        // get normal of face (cross product)
+        aiVector3f v1 = face_quad.vertices[0];
+        aiVector3f v2 = face_quad.vertices[1];
+        aiVector3f v3 = face_quad.vertices[2];
+        aiVector3f a(
+            v2.x - v1.x, v2.y - v1.y, v2.z - v1.z
+        );
+        aiVector3f b(
+            v3.x - v1.x, v3.y - v1.y, v3.z - v1.z
+        );
+        aiVector3f face_normal(
+            a.y*b.z - a.z*b.y,
+            a.z*b.x - a.x*b.z,
+            a.x*b.y - a.y*b.x
+        );
+        face_normal.Normalize();
+        int sdf =2;
     }
 }
