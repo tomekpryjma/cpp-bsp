@@ -66,6 +66,7 @@ int main(int argc, char** argv) {
             }
 
             if (tris_processed == 2) { // quad face complete
+                tris_processed = 0;
                 FaceQuad face_quad;
                 for (int vert_id_idx = 0; vert_id_idx < 4; vert_id_idx++) {
                     // get actual vec 3f
