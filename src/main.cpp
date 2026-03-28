@@ -15,6 +15,19 @@ typedef struct _SplitPlane {
     aiVector3f direction;
 } SplitPlane;
 
+typedef struct _BSPNode {
+    SplitPlane* split_plane;
+    struct _BSPNode* left;
+    struct _BSPNode* right;
+    bool is_leaf;
+    std::vector<aiVector3f> geom_vertices;
+    std::vector<int> geom_vertices_idx; // Hmmm...might not need this. If I keep it I think I will need to also store the mesh vert idxs.
+    // Mesh vertices (3d float vecs) are stored per mesh inside the the scene's mMeshes (each mesh has their own mVertices, this is the true 3d float repr of vertices).
+    // Mesh faces mesh->mFaces contain indexes for vertices inside that mesh's mVertices.
+    // Therefore if i want to use multiple meshes in level scene, I need to make some sort of global mapping of verticies or (just came to me), store a list of
+    // meshes and all of their verts in some sort of global array, i.e. [mesh1: [v1,v2,v3], mesh2: [v1,v2] ... ]
+} BSPNode;
+
 int main(int argc, char** argv) {
     std::string test_data_dirpath = APP_ROOT;
         test_data_dirpath.append("/test-data");
