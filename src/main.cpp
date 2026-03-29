@@ -7,26 +7,47 @@
 
 typedef struct _FaceQuad {
     aiVector3f vertices[4];
+    struct _SplitPlane* split_plane;
     bool is_used;
 } FaceQuad;
 
 typedef struct _SplitPlane {
     aiVector3f normal;
-    aiVector3f direction;
+    struct _FaceQuad* face_quad;
+    bool is_used;
 } SplitPlane;
 
+// IDEA: put meshes and all of their verts in some sort of global array, i.e. [mesh1: [v1,v2,v3], mesh2: [v1,v2] ... ]
+// this way i could pass around vert ids instead of 3d vecs.
 typedef struct _BSPNode {
     SplitPlane* split_plane;
-    struct _BSPNode* left;
-    struct _BSPNode* right;
+    struct _BSPNode* in_back;
+    struct _BSPNode* in_front;
     bool is_leaf;
     std::vector<aiVector3f> geom_vertices;
-    std::vector<int> geom_vertices_idx; // Hmmm...might not need this. If I keep it I think I will need to also store the mesh vert idxs.
-    // Mesh vertices (3d float vecs) are stored per mesh inside the the scene's mMeshes (each mesh has their own mVertices, this is the true 3d float repr of vertices).
-    // Mesh faces mesh->mFaces contain indexes for vertices inside that mesh's mVertices.
-    // Therefore if i want to use multiple meshes in level scene, I need to make some sort of global mapping of verticies or (just came to me), store a list of
-    // meshes and all of their verts in some sort of global array, i.e. [mesh1: [v1,v2,v3], mesh2: [v1,v2] ... ]
 } BSPNode;
+
+bool bsp(std::vector<SplitPlane>& split_planes, std::vector<FaceQuad>& face_quads) {
+    BSPNode root;
+    root.split_plane = &split_planes.at(0);
+    split_planes.at(0).is_used = true;
+    root.in_back = NULL;
+    root.in_front = NULL;
+    root.is_leaf = false;
+
+    int num_split_planes = split_planes.size();
+    int num_used_split_planes = 1;
+    int max_iters = 500;
+    int iter = 0;
+
+    // Make sure to use next unused split plane.
+    // Mark used planes.
+    // while loop should ensure that it keeps running if not all split planes have been
+    // processed yet.
+    // split planes need to add verts/geom from faces (and therefore planes) that haven't been used yet.
+
+    return 0;
+}
 
 int main(int argc, char** argv) {
     std::string test_data_dirpath = APP_ROOT;
@@ -37,8 +58,8 @@ int main(int argc, char** argv) {
 
     const aiScene* scene = importer.ReadFile(level_filepath, aiProcess_JoinIdenticalVertices);
 
-    std::vector<FaceQuad> face_quads;
     std::vector<SplitPlane> split_planes;
+    std::vector<FaceQuad> face_quads;
 
     int num_meshes = scene->mNumMeshes;
     int tris_per_quad = 2;
@@ -81,6 +102,7 @@ int main(int argc, char** argv) {
             if (tris_processed == 2) { // quad face complete
                 tris_processed = 0;
                 FaceQuad face_quad;
+                face_quad.split_plane = NULL;
                 for (int vert_id_idx = 0; vert_id_idx < 4; vert_id_idx++) {
                     // get actual vec 3f
                     int mesh_vertex_id = vert_ids_processed[vert_id_idx];
@@ -96,6 +118,7 @@ int main(int argc, char** argv) {
     int num_face_quads = face_quads.size();
     for (int face_quad_idx = 0; face_quad_idx < num_face_quads; face_quad_idx++) {
         FaceQuad face_quad = face_quads[face_quad_idx];
+        FaceQuad* ptr_face_quad = &face_quads[face_quad_idx];
         // get normal of face (cross product)
         aiVector3f v1 = face_quad.vertices[0];
         aiVector3f v2 = face_quad.vertices[1];
@@ -112,6 +135,14 @@ int main(int argc, char** argv) {
             a.x*b.y - a.y*b.x
         );
         face_normal.Normalize();
-        int sdf =2;
+        SplitPlane sp;
+        sp.normal = face_normal;
+        sp.is_used = false;
+        sp.face_quad = ptr_face_quad;
+        split_planes.push_back(sp);
+        ptr_face_quad->split_plane = &split_planes.back();
     }
+
+    int num_split_planes = split_planes.size();
+    int bsp_res = bsp(split_planes, face_quads);
 }
