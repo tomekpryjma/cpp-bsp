@@ -5,8 +5,20 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
+/**
+TODO: change to use tris instead of creating quads.
+I am running into a problem where I need to determine the edge boundary of
+a face quad to decide where the splitplane should add a new vertex (and therefore
+    an additional edge in the face).
+    Trying to do it this way seems overly complicated. Doing it the easier way and
+    just joining all of the face vertices will cause triangle-esque edge connections anyway...
+The trade off of using tris means that there might potentially be more coplanar faces to deal with
+when deciding the infront/inback but that seems like a simpler problem that won't make things
+super frustrating to deal with in the future.
+ */
 typedef struct _FaceQuad {
     aiVector3f vertices[4];
+
     struct _SplitPlane* split_plane;
     bool is_used;
 } FaceQuad;
@@ -27,7 +39,7 @@ typedef struct _BSPNode {
     std::vector<aiVector3f> geom_vertices;
 } BSPNode;
 
-bool bsp(std::vector<SplitPlane>& split_planes, std::vector<FaceQuad>& face_quads) {
+bool bsp_init(std::vector<SplitPlane>& split_planes, std::vector<FaceQuad>& face_quads) {
     BSPNode root;
     root.split_plane = &split_planes.at(0);
     split_planes.at(0).is_used = true;
@@ -48,6 +60,15 @@ bool bsp(std::vector<SplitPlane>& split_planes, std::vector<FaceQuad>& face_quad
 
     return 0;
 }
+
+void bsp(BSPNode current_node) {
+    // get curr node split plane normal
+    // loop through all face quads
+    //  get edges of face
+    //  see whether whole edge lies on one side or the other
+    //  if one endpoint is one one side of splitplane and second endpoint
+    //   on the other, then split the edge and add a vertex (might need to be duped)
+};
 
 int main(int argc, char** argv) {
     std::string test_data_dirpath = APP_ROOT;
@@ -144,5 +165,5 @@ int main(int argc, char** argv) {
     }
 
     int num_split_planes = split_planes.size();
-    int bsp_res = bsp(split_planes, face_quads);
+    int bsp_res = bsp_init(split_planes, face_quads);
 }
