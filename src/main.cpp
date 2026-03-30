@@ -68,6 +68,14 @@ void bsp(BSPNode current_node) {
     //  see whether whole edge lies on one side or the other
     //  if one endpoint is one one side of splitplane and second endpoint
     //   on the other, then split the edge and add a vertex (might need to be duped)
+
+    /**
+    updated understanding of the process:
+        - the parent should create 2 arrays (infront & inback), from there a child face
+          and split plane is chosen (one for infron and inback).
+        - then, the same is done recursively, which each child subdividing the infront and inback
+          sets that its parent passes to it.
+     */
 };
 
 int main(int argc, char** argv) {
