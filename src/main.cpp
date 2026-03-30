@@ -16,16 +16,16 @@ The trade off of using tris means that there might potentially be more coplanar 
 when deciding the infront/inback but that seems like a simpler problem that won't make things
 super frustrating to deal with in the future.
  */
-typedef struct _FaceQuad {
-    aiVector3f vertices[4];
+typedef struct _FaceTriangle {
+    aiVector3f vertices[3];
 
     struct _SplitPlane* split_plane;
     bool is_used;
-} FaceQuad;
+} FaceTriangle;
 
 typedef struct _SplitPlane {
     aiVector3f normal;
-    struct _FaceQuad* face_quad;
+    struct _FaceTriangle* face;
     bool is_used;
 } SplitPlane;
 
@@ -39,7 +39,7 @@ typedef struct _BSPNode {
     std::vector<aiVector3f> geom_vertices;
 } BSPNode;
 
-bool bsp_init(std::vector<SplitPlane>& split_planes, std::vector<FaceQuad>& face_quads) {
+bool bsp_init(std::vector<SplitPlane>& split_planes, std::vector<FaceTriangle>& faces) {
     BSPNode root;
     root.split_plane = &split_planes.at(0);
     split_planes.at(0).is_used = true;
@@ -80,17 +80,15 @@ int main(int argc, char** argv) {
     const aiScene* scene = importer.ReadFile(level_filepath, aiProcess_JoinIdenticalVertices);
 
     std::vector<SplitPlane> split_planes;
-    std::vector<FaceQuad> face_quads;
+    std::vector<FaceTriangle> faces;
 
     int num_meshes = scene->mNumMeshes;
-    int tris_per_quad = 2;
 
     for (int mi = 0; mi < num_meshes; mi++) {
         const aiMesh* mesh = scene->mMeshes[mi];
         int faces_num = mesh->mNumFaces;
         int tris_processed = 0;
-        std::vector<int> vert_ids_processed;
-        vert_ids_processed.reserve(4);
+
         for (int fi = 0; fi < faces_num; fi++) {
             tris_processed++;
             const struct aiFace mesh_face = mesh->mFaces[fi];
@@ -104,46 +102,26 @@ int main(int argc, char** argv) {
                 exit(3);
             }
 
-            for (int fvi = 0; fvi < num_verts_per_tri; fvi++) {
-                bool mesh_vertex_already_added = false;
-                int mesh_vertex_id = mesh_face.mIndices[fvi];
-                for (int exist_vert_lookup_idx = 0; exist_vert_lookup_idx < 4; exist_vert_lookup_idx++) {
-                    if (exist_vert_lookup_idx < vert_ids_processed.size()) {
-                        if (vert_ids_processed[exist_vert_lookup_idx] == mesh_vertex_id) {
-                            mesh_vertex_already_added = true;
-                            break;
-                        }
-                    }
-                }
-                if (!mesh_vertex_already_added) {
-                    vert_ids_processed.push_back(mesh_vertex_id);
-                } 
-            }
+            FaceTriangle face;
+            face.split_plane = NULL;
 
-            if (tris_processed == 2) { // quad face complete
-                tris_processed = 0;
-                FaceQuad face_quad;
-                face_quad.split_plane = NULL;
-                for (int vert_id_idx = 0; vert_id_idx < 4; vert_id_idx++) {
-                    // get actual vec 3f
-                    int mesh_vertex_id = vert_ids_processed[vert_id_idx];
-                    face_quad.vertices[vert_id_idx] = mesh->mVertices[mesh_vertex_id];
-                }
-                face_quads.push_back(face_quad);
-                vert_ids_processed.clear();
+            for (int fvi = 0; fvi < num_verts_per_tri; fvi++) {
+                int mesh_vertex_id = mesh_face.mIndices[fvi];
+                face.vertices[fvi] = mesh->mVertices[mesh_vertex_id];
             }
+            faces.push_back(face);
         }
     }
 
     // Generate splitplanes
-    int num_face_quads = face_quads.size();
-    for (int face_quad_idx = 0; face_quad_idx < num_face_quads; face_quad_idx++) {
-        FaceQuad face_quad = face_quads[face_quad_idx];
-        FaceQuad* ptr_face_quad = &face_quads[face_quad_idx];
+    int num_faces = faces.size();
+    for (int face_idx = 0; face_idx < num_faces; face_idx++) {
+        FaceTriangle face = faces[face_idx];
+        FaceTriangle* ptr_face = &faces[face_idx];
         // get normal of face (cross product)
-        aiVector3f v1 = face_quad.vertices[0];
-        aiVector3f v2 = face_quad.vertices[1];
-        aiVector3f v3 = face_quad.vertices[2];
+        aiVector3f v1 = face.vertices[0];
+        aiVector3f v2 = face.vertices[1];
+        aiVector3f v3 = face.vertices[2];
         aiVector3f a(
             v2.x - v1.x, v2.y - v1.y, v2.z - v1.z
         );
@@ -159,11 +137,11 @@ int main(int argc, char** argv) {
         SplitPlane sp;
         sp.normal = face_normal;
         sp.is_used = false;
-        sp.face_quad = ptr_face_quad;
+        sp.face = ptr_face;
         split_planes.push_back(sp);
-        ptr_face_quad->split_plane = &split_planes.back();
+        ptr_face->split_plane = &split_planes.back();
     }
 
     int num_split_planes = split_planes.size();
-    int bsp_res = bsp_init(split_planes, face_quads);
+    int bsp_res = bsp_init(split_planes, faces);
 }
