@@ -4,6 +4,8 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+#include <raylib.h>
+#include <raymath.h>
 
 /**
 TODO: change to use tris instead of creating quads.
@@ -58,10 +60,23 @@ bool bsp_init(std::vector<SplitPlane>& split_planes, std::vector<FaceTriangle>& 
     // processed yet.
     // split planes need to add verts/geom from faces (and therefore planes) that haven't been used yet.
 
+    std::vector<FaceTriangle> infront;
+    std::vector<FaceTriangle> inback;
+
+    int num_faces = faces.size();
+    for (int fi = 0; fi < num_faces; fi++) {
+        FaceTriangle face = faces[fi];
+        // if entire face (ie. all edges) are on one side of splitplane, add to inback/infront.
+
+        // if face is cut by split plane:
+        // - get intersection points of splitplane & triangle (entrance & exit)
+        // - create new faces made up of the new verts & add to innfront/inback
+    }
+
     return 0;
 }
 
-void bsp(BSPNode current_node) {
+void bsp(BSPNode current_node, std::vector<FaceTriangle> infront, std::vector<FaceTriangle> inback) {
     // get curr node split plane normal
     // loop through all face quads
     //  get edges of face
@@ -79,9 +94,10 @@ void bsp(BSPNode current_node) {
 };
 
 int main(int argc, char** argv) {
+    InitWindow(640, 400, "Test BSP");
     std::string test_data_dirpath = APP_ROOT;
         test_data_dirpath.append("/test-data");
-    std::string level_filepath = test_data_dirpath + "/simple-plane-tilted.glb";
+    std::string level_filepath = test_data_dirpath + "/two-planes.glb";
 
     Assimp::Importer importer;
 
@@ -141,6 +157,8 @@ int main(int argc, char** argv) {
             a.z*b.x - a.x*b.z,
             a.x*b.y - a.y*b.x
         );
+        // FIXME: first face seems to have some bug with it where it doesn't save itself
+        // properly against the splitplane. Its normal zeroes out for some reason.
         face_normal.Normalize();
         SplitPlane sp;
         sp.normal = face_normal;
@@ -150,6 +168,40 @@ int main(int argc, char** argv) {
         ptr_face->split_plane = &split_planes.back();
     }
 
-    int num_split_planes = split_planes.size();
-    int bsp_res = bsp_init(split_planes, faces);
+    // int num_split_planes = split_planes.size();
+    // int bsp_res = bsp_init(split_planes, faces);
+    Camera3D camera = {0};
+    camera.position = (Vector3){ 5.0f, 5.0f, 10.0f };
+    camera.target = (Vector3){ 0.0f, 0.0f, 0.0f };
+    camera.up = (Vector3){ 0.0f, 1.0f, 0.0f };
+    camera.fovy = 45.0f;
+    camera.projection = CAMERA_PERSPECTIVE;
+    SetTargetFPS(60);
+    while (!WindowShouldClose())
+    {
+        BeginDrawing();
+            ClearBackground(RAYWHITE);
+            BeginMode3D(camera);
+                for (int face_idx = 0; face_idx < num_faces; face_idx++)
+                {
+                    FaceTriangle face = faces[face_idx];
+                    Vector3 v1 = {face.vertices[0].x, face.vertices[0].y, face.vertices[0].z};
+                    Vector3 v2 = {face.vertices[1].x, face.vertices[1].y, face.vertices[1].z};
+                    Vector3 v3 = {face.vertices[2].x, face.vertices[2].y, face.vertices[2].z};
+
+                    DrawLine3D(v1,v2,BLUE);
+                    DrawLine3D(v2,v3,BLUE);
+                    DrawLine3D(v3,v1,BLUE);
+
+                    // Draw the split plane normal
+                    SplitPlane* sp = face.split_plane;
+                    Vector3 normal_v3 = {sp->normal.x, sp->normal.y, sp->normal.z};
+                    DrawLine3D(v2, Vector3Add(v2, normal_v3), RED);
+                }
+                DrawGrid(10, 1.0f);
+            EndMode3D();
+        EndDrawing();
+    }
+
+    CloseWindow();
 }

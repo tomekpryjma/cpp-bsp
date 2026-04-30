@@ -20,16 +20,19 @@ target_include_directories(
 target_include_directories(
     ${CMAKE_PROJECT_NAME}
     PRIVATE "${LIB_DIR}/assimp/include"
+    PRIVATE "${LIB_DIR}/raylib/include"
 )
 
 target_link_directories(
     ${CMAKE_PROJECT_NAME}
     PRIVATE "${LIB_DIR}/assimp/lib"
+    PRIVATE "${LIB_DIR}/raylib/lib"
 )
 
 target_link_libraries(
     ${CMAKE_PROJECT_NAME}
     PRIVATE assimp
+    PRIVATE raylib
 )
 if (LINUX)
     target_link_libraries(
