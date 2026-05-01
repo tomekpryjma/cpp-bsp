@@ -104,6 +104,12 @@ int main(int argc, char** argv) {
     const aiScene* scene = importer.ReadFile(level_filepath, aiProcess_JoinIdenticalVertices);
 
     std::vector<SplitPlane> split_planes;
+    // Reserving the space prevents faces' refs to splitplanes from becoming gubbed
+    // when the splitplanes vector resizes. It is not a problem when assigning face
+    // references to splitplanes because by the time that happens, the face vector is
+    // full and will not resize anymore.
+    // Hardcoding for now is ok. Another solution would be to pre-reserve based on details from assimp.
+    split_planes.reserve(sizeof(SplitPlane) * 4);
     std::vector<FaceTriangle> faces;
 
     int num_meshes = scene->mNumMeshes;
@@ -157,8 +163,6 @@ int main(int argc, char** argv) {
             a.z*b.x - a.x*b.z,
             a.x*b.y - a.y*b.x
         );
-        // FIXME: first face seems to have some bug with it where it doesn't save itself
-        // properly against the splitplane. Its normal zeroes out for some reason.
         face_normal.Normalize();
         SplitPlane sp;
         sp.normal = face_normal;
@@ -171,7 +175,7 @@ int main(int argc, char** argv) {
     // int num_split_planes = split_planes.size();
     // int bsp_res = bsp_init(split_planes, faces);
     Camera3D camera = {0};
-    camera.position = (Vector3){ 5.0f, 5.0f, 10.0f };
+    camera.position = (Vector3){ 4.0f, 6.0f, 10.0f };
     camera.target = (Vector3){ 0.0f, 0.0f, 0.0f };
     camera.up = (Vector3){ 0.0f, 1.0f, 0.0f };
     camera.fovy = 45.0f;
@@ -194,8 +198,8 @@ int main(int argc, char** argv) {
                     DrawLine3D(v3,v1,BLUE);
 
                     // Draw the split plane normal
-                    SplitPlane* sp = face.split_plane;
-                    Vector3 normal_v3 = {sp->normal.x, sp->normal.y, sp->normal.z};
+                    // SplitPlane* sp = face.split_plane;
+                    Vector3 normal_v3 = {face.split_plane->normal.x, face.split_plane->normal.y, face.split_plane->normal.z};
                     DrawLine3D(v2, Vector3Add(v2, normal_v3), RED);
                 }
                 DrawGrid(10, 1.0f);
